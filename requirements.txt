@@ -1,1 +1,9 @@
- 
+openai
+requests
+beautifulsoup4
+scikit-learn
+flask
+regex
+pandas
+sentence-transformers
+#spacy
