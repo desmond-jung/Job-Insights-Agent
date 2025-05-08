@@ -5,45 +5,43 @@ from functions.scraper import scrape_jobs, save_jobs_to_json
 from functions.embedder import embed_jobs
 from functions.vector_store import build_faiss_index
 
-def test_system():
-    print("Job Search System Test")
+def interactive_mode():
+    print("Job Search System")
+    print("=" * 50)
+    print("Type 'quit' or 'exit' to end the program")
+    print("Type 'help' to see available commands")
     print("=" * 50)
     
-    # Test 1: Basic job scraping
-    print("\nTest 1: Basic Job Scraping")
-    print("-" * 30)
-    test_query = "Find me 3 machine learning jobs in San Francisco"
-    print(f"Query: {test_query}")
-    result = orchestrator(test_query)
-    
-    if result:
-        print("\nSuccessfully scraped jobs!")
-        # Save the results to a JSON file
-        save_jobs_to_json(result, "test_results.json")
-        print("Results saved to test_results.json")
-    else:
-        print("Failed to scrape jobs")
-
-    # Test 2: Interactive mode
-    print("\nTest 2: Interactive Mode")
-    print("-" * 30)
-    print("Enter 'quit' to exit")
-    
     while True:
-        user_input = input("\nWhat would you like to search for? ")
-        if user_input.lower() == 'quit':
+        user_input = input("\nWhat would you like to search for? ").strip()
+        
+        # Check for exit commands
+        if user_input.lower() in ['quit', 'exit']:
+            print("\nExiting program. Goodbye!")
             break
             
+        # Check for help command
+        if user_input.lower() == 'help':
+            print("\nAvailable commands:")
+            print("- 'quit' or 'exit': End the program")
+            print("- 'help': Show this help message")
+            print("\nExample queries:")
+            print("- Find me 5 data scientist jobs in New York")
+            print("- Get me some software engineering jobs in Seattle")
+            print("- Search for Python developer positions in Boston")
+            continue
+            
+        # Process the search query
         result = orchestrator(user_input)
-        if result:
-            print("\nResults:")
-            print("-" * 20)
-            for job in result:
-                print(f"\nTitle: {job.get('title', 'N/A')}")
-                print(f"Company: {job.get('company_name', 'N/A')}")
-                print(f"Location: {job.get('location', 'N/A')}")
-                print(f"Employment Type: {job.get('employment_type', 'N/A')}")
-                print("-" * 20)
+        
+        # Check if result is a list (job results) or string (LLM response)
+        if isinstance(result, list):
+            # Save results to file
+            save_jobs_to_json(result, "test_results.json")
+            print(f"\nFound {len(result)} jobs. Results saved to test_results.json")
+        else:
+            # If result is a string (LLM response), just print it
+            print("\nResponse:", result)
 
 if __name__ == "__main__":
     # Make sure OpenAI API key is set
@@ -51,4 +49,4 @@ if __name__ == "__main__":
         print("Please set your OpenAI API key as an environment variable:")
         print("export OPENAI_API_KEY='your-api-key-here'")
     else:
-        test_system()
+        interactive_mode()
