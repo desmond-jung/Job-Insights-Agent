@@ -192,7 +192,8 @@ def build_faiss_index(embeddings, index_path = "jobs.index"):
 
 # Optional: test block
 if __name__ == "__main__":
+    #print("test")
     jobs = scrape_jobs("Data Scientist", "Los Angeles County", num_jobs=10)
-    job_descriptions = [job['description'] for job in jobs]
-    embeddings = embed_jobs(job_descriptions, method="sbert")
+    # job_descriptions = [job['description'] for job in jobs]
+    # embeddings = embed_jobs(job_descriptions, method="sbert")
    
