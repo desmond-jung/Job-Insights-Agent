@@ -25,9 +25,11 @@ def scrape_jobs(title: str, location: str = "", num_jobs: int = 50) -> list:
     encoded_job_title = title.replace(" ", "%2B")
     encoded_location = location.replace(" ", "%2B")
     all_jobs = []
+    jobs_found = 0
 
     # 1. Scrape job listing pages
-    for start_position in range(0, num_jobs + 1, 10):
+    start_position = 0
+    while jobs_found < num_jobs:
         list_url = (
             f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
             f"?keywords={encoded_job_title}&location={encoded_location}&geoId=&trk=public_jobs_jobs-search-bar_search-submit&start={start_position}"
@@ -37,10 +39,21 @@ def scrape_jobs(title: str, location: str = "", num_jobs: int = 50) -> list:
             list_data = response.text
             list_soup = BeautifulSoup(list_data, "html.parser")
             more_jobs = list_soup.find_all("li")
-            all_jobs.extend(more_jobs)
-            print(f"Found {len(more_jobs)} jobs on page {start_position//10 + 1}")  # Debug print
+            
+            # Only add jobs up to the requested number
+            remaining_jobs = num_jobs - jobs_found
+            jobs_to_add = more_jobs[:remaining_jobs]
+            all_jobs.extend(jobs_to_add)
+            jobs_found += len(jobs_to_add)
+            
+            print(f"Found {len(jobs_to_add)} jobs on page {start_position//10 + 1}")
+            
+            if len(more_jobs) < 10:  # If we got fewer than 10 jobs, we've reached the end
+                break
+                
+            start_position += 10
         else:
-            print(f"Failed to fetch page {start_position//10 + 1}")  # Debug print
+            print(f"Failed to fetch page {start_position//10 + 1}")
             break
 
     # 2. Extract job IDs
@@ -53,7 +66,7 @@ def scrape_jobs(title: str, location: str = "", num_jobs: int = 50) -> list:
                 job_id = job_id.split(":")[3]
                 job_id_list.append(job_id)
     job_id_list = set(job_id_list)
-    print(f"Found {len(job_id_list)} unique job IDs")  # Debug print
+    print(f"Found {len(job_id_list)} unique job IDs")
 
     # 3. Scrape each job posting
     job_list = []
@@ -123,14 +136,23 @@ def scrape_jobs(title: str, location: str = "", num_jobs: int = 50) -> list:
             pattern = r'(\d+)\+?\s*years?\s*(?:of experience)?|(\d+)-(\d+)\s*years?\s*(?:of experience)?|(\d+)\s*years?\s*(?:of experience)?'
 
             matches = re.findall(pattern, cleaned_desc)
-            yoe_bullets = []
+            yoe_numbers = []
 
             for bullet in bullet_points:
                 text = bullet.get_text(strip=True)  
                 if re.search(pattern, text):  
-                    yoe_bullets.append(text)
+                    # extract numbers from sentences
+                    numbers = re.findall(r'\d+', text)
 
-            job_post["yoe"] = yoe_bullets
+                    if '-' in text:
+                        yoe_numbers.extend([int(num) for num in numbers])
+                    elif '+' in text:
+                        yoe_numbers.append(int(numbers[0]))
+                    else:
+                        yoe_numbers.append(int(numbers[0]))
+            
+            if yoe_numbers:
+                job_post["yoe"] = int(np.ceil(np.mean(yoe_numbers)))
         except:
             job_post["yoe"] = None
 
@@ -144,7 +166,8 @@ def scrape_jobs(title: str, location: str = "", num_jobs: int = 50) -> list:
             formatted_matches = [degree_map.get(match, match) for match in edu]
             degrees = list(set(formatted_matches))
             
-            job_post["education"] = degrees
+
+            job_post["education"] = ", ".join(degrees) if degrees else None
         except:
             job_post["education"] = None
 
@@ -175,10 +198,11 @@ def scrape_jobs(title: str, location: str = "", num_jobs: int = 50) -> list:
 # Optional: test block
 if __name__ == "__main__":
     #print("test")
-    jobs = scrape_jobs("Data Scientist", "Los Angeles County", num_jobs=1)
-    df = pd.DataFrame.from_dict(jobs)
-    df.to_json("test_results.json", orient="records", indent=2)
-    print("Saved results to test_results.json")
+    jobs = scrape_jobs("Data Scientist", "Los Angeles County", num_jobs=5)
+    print(len(jobs))
+    yoe = jobs[3]["yoe"]
+    education = jobs[3]['education']
+    print(education)
 
     
    

@@ -1,14 +1,18 @@
 import json
 from openai import OpenAI
-from functions.scraper import scrape_jobs, save_jobs_to_json
+from functions.scraper import scrape_jobs
 from functions.database import init_db, store_jobs, get_job_by_id
 from functions.embedder import embed_jobs
 from functions.vector_store import build_faiss_index
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 
 init_db()
 
-client = OpenAI()
+# Initialize OpenAI client with API key from environment variable
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 
 functions = [
@@ -81,8 +85,6 @@ def call_function_by_name(name, arguments):
             # Then store them in the database
             store_jobs(jobs)
             return jobs
-        elif name == "save_jobs_to_json":
-            return save_jobs_to_json(**arguments)
         elif name == "embed_jobs":
             return embed_jobs(**arguments)
         elif name == "build_faiss_index":
@@ -123,9 +125,8 @@ def orchestrator(user_prompt):
                     store_jobs(result)
                     
                     # Generate embeddings for job descriptions
-            
                     descriptions = [job['description'] for job in result] # for each result in outputted dict, grab desc
-                    embeddings = embed_jobs(descriptions = descriptions)
+                    embeddings = embed_jobs(job_descriptions=descriptions)
 
                     # Build index
                     faiss_index = build_faiss_index(embeddings=embeddings)
@@ -133,8 +134,6 @@ def orchestrator(user_prompt):
                     result = {
                         "jobs": result,
                         "message": f"Found {len(result)} jobs. Stored in database and created embeddings"
-
-
                     }
                 return result
         else:

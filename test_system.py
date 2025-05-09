@@ -1,52 +1,59 @@
 # test_system.py
 import os
 from functions.orchestrator import orchestrator
-from functions.scraper import scrape_jobs, save_jobs_to_json
+from functions.scraper import scrape_jobs
 from functions.embedder import embed_jobs
 from functions.vector_store import build_faiss_index
+from dotenv import load_dotenv
 
-def interactive_mode():
-    print("Job Search System")
-    print("=" * 50)
-    print("Type 'quit' or 'exit' to end the program")
-    print("Type 'help' to see available commands")
+# Load environment variables
+load_dotenv()
+
+def main():
+    print("\nJob Search System")
     print("=" * 50)
     
     while True:
-        user_input = input("\nWhat would you like to search for? ").strip()
+        # Get user input
+        job_title = input("\nEnter job title to search (or 'quit' to exit): ").strip()
         
-        # Check for exit commands
-        if user_input.lower() in ['quit', 'exit']:
+        if job_title.lower() in ['quit', 'exit']:
             print("\nExiting program. Goodbye!")
             break
             
-        # Check for help command
-        if user_input.lower() == 'help':
-            print("\nAvailable commands:")
-            print("- 'quit' or 'exit': End the program")
-            print("- 'help': Show this help message")
-            print("\nExample queries:")
-            print("- Find me 5 data scientist jobs in New York")
-            print("- Get me some software engineering jobs in Seattle")
-            print("- Search for Python developer positions in Boston")
-            continue
-            
-        # Process the search query
-        result = orchestrator(user_input)
+        location = input("Enter location (press Enter to skip): ").strip()
+        num_jobs = input("Enter number of jobs to fetch (default: 5): ").strip()
         
-        # Check if result is a list (job results) or string (LLM response)
-        if isinstance(result, list):
-            # Save results to file
-            save_jobs_to_json(result, "test_results.json")
-            print(f"\nFound {len(result)} jobs. Results saved to test_results.json")
+        # Set default values
+        if not num_jobs:
+            num_jobs = 5
         else:
-            # If result is a string (LLM response), just print it
-            print("\nResponse:", result)
+            try:
+                num_jobs = int(num_jobs)
+            except ValueError:
+                print("Invalid number. Using default of 5 jobs.")
+                num_jobs = 5
+        
+        # Construct the search query
+        search_query = f"Find me {num_jobs} {job_title} jobs"
+        if location:
+            search_query += f" in {location}"
+            
+        print(f"\nSearching for: {search_query}")
+        
+        # Use the orchestrator to search and store jobs
+        result = orchestrator(search_query)
+        
+        if result and isinstance(result, dict) and "jobs" in result:
+            print(f"\nSuccessfully scraped {len(result['jobs'])} jobs!")
+            print("Jobs have been stored in the database and embeddings have been created.")
+        else:
+            print("\nNo jobs found or an error occurred during the search.")
 
 if __name__ == "__main__":
-    # Make sure OpenAI API key is set
+    # Check for OpenAI API key
     if not os.getenv("OPENAI_API_KEY"):
-        print("Please set your OpenAI API key as an environment variable:")
-        print("export OPENAI_API_KEY='your-api-key-here'")
+        print("Error: OPENAI_API_KEY environment variable is not set.")
+        print("Please set your OpenAI API key in the .env file or as an environment variable.")
     else:
-        interactive_mode()
+        main()
