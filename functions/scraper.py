@@ -9,6 +9,7 @@ import urllib.parse
 import json
 from sentence_transformers import SentenceTransformer
 import faiss
+import pandas as pd
 
 def clean_description(description):
     if description:
@@ -170,20 +171,14 @@ def scrape_jobs(title: str, location: str = "", num_jobs: int = 50) -> list:
 
     return job_list
 
-# saving to json file, but can switch to sqlite later
-def save_jobs_to_json(job_list: list, filename: str = "jobs.json"):
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(job_list, f, ensure_ascii=False, indent=2)
-
-
-
-
-
 
 # Optional: test block
 if __name__ == "__main__":
     #print("test")
-    jobs = scrape_jobs("Data Scientist", "Los Angeles County", num_jobs=10)
-    job_descriptions = [job['description'] for job in jobs]
-    embeddings = embed_jobs(job_descriptions, method="sbert")
+    jobs = scrape_jobs("Data Scientist", "Los Angeles County", num_jobs=1)
+    df = pd.DataFrame.from_dict(jobs)
+    df.to_json("test_results.json", orient="records", indent=2)
+    print("Saved results to test_results.json")
+
+    
    
