@@ -1,18 +1,20 @@
-import openai
-import os
 import json
+from openai import OpenAI
 from functions.scraper import scrape_jobs, save_jobs_to_json
 from functions.database import init_db, store_jobs, get_job_by_id
 from functions.embedder import embed_jobs
 from functions.vector_store import build_faiss_index
 
-client = openai.api_key = os.getenv("OPENAI_API_KEY")
+
+init_db()
+
+client = OpenAI()
 
 
 functions = [
     {
         "name": "scrape_jobs",
-        "description": "Scrape job postings for a given title and location.",
+        "description": "Scrape job postings from LinkedIn",
         "parameters": {
             "type": "object",
             "properties": {
@@ -24,35 +26,17 @@ functions = [
         }
     },
     {
-        "name": "save_jobs_to_json",
-        "description": "Save job postings to a JSON file.",
+        "name": "get_job_by_id",
+        "description": "Get details of a specific job by its ID",
         "parameters": {
             "type": "object",
             "properties": {
-                "job_list": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "string"},
-                            "title": {"type": "string"},
-                            "company_name": {"type": "string"},
-                            "location": {"type": "string"},
-                            "description": {"type": "string"},
-                            "seniority_level": {"type": "string"},
-                            "employment_type": {"type": "string"},
-                            "job_function": {"type": "string"},
-                            "industry": {"type": "string"},
-                            "yoe": {"type": "array", "items": {"type": "string"}},
-                            "education": {"type": "array", "items": {"type": "string"}},
-                            "salary": {"type": "string"}
-                        }
-                    },
-                    "description": "List of job dictionaries"
-                },
-                "filename": {"type": "string", "description": "Output JSON filename"}
+                "job_id": {
+                    "type": "string",
+                    "description": "The ID of the job to retrieve"
+                }
             },
-            "required": ["job_list"]
+            "required": ["job_id"]
         }
     },
     {
@@ -92,13 +76,19 @@ functions = [
 def call_function_by_name(name, arguments):
     try:
         if name == "scrape_jobs":
-            return scrape_jobs(**arguments)
+            # First scrape the jobs
+            jobs = scrape_jobs(**arguments)
+            # Then store them in the database
+            store_jobs(jobs)
+            return jobs
         elif name == "save_jobs_to_json":
             return save_jobs_to_json(**arguments)
         elif name == "embed_jobs":
             return embed_jobs(**arguments)
         elif name == "build_faiss_index":
             return build_faiss_index(**arguments)
+        elif name == "get_job_by_id":
+            return get_job_by_id(**arguments)
         else:
             raise ValueError(f"Unknown function: {name}")
     except Exception as e:
@@ -126,6 +116,26 @@ def orchestrator(user_prompt):
                 func_name = tool_call.function.name
                 arguments = json.loads(tool_call.function.arguments)
                 result = call_function_by_name(func_name, arguments)
+                
+                # If the function called was scrape_jobs, automatically process the results
+                if func_name == "scrape_jobs" and result:
+                    # Store jobs in database
+                    store_jobs(result)
+                    
+                    # Generate embeddings for job descriptions
+            
+                    descriptions = [job['description'] for job in result] # for each result in outputted dict, grab desc
+                    embeddings = embed_jobs(descriptions = descriptions)
+
+                    # Build index
+                    faiss_index = build_faiss_index(embeddings=embeddings)
+
+                    result = {
+                        "jobs": result,
+                        "message": f"Found {len(result)} jobs. Stored in database and created embeddings"
+
+
+                    }
                 return result
         else:
             return message.content
@@ -145,5 +155,6 @@ if __name__ == "__main__":
     for query in test_queries:
         print(f"\nTesting query: {query}")
         print("-" * 50)
-        orchestrator(query)
+        result = orchestrator(query)
+        print(f"Response: {result}")
         print("-" * 50) 
