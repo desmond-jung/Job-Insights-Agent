@@ -60,7 +60,44 @@ def store_jobs(job_list):
   
     conn.commit()
     conn.close()
+def list_all_jobs():
+    """Retrieve all jobs from database"""
+    conn = sqlite3.connect('jobs.db')
+    c = conn.cursor()
 
+    c.execute('''
+        SELECT id, title, company_name, location, description, 
+               seniority_level, employment_type, job_function,
+               industry, salary, yoe, education, created_at, updated_at 
+        FROM jobs
+        ORDER BY created_at DESC
+    ''')
+
+    jobs = c.fetchall()
+    conn.close()
+
+    # Convert to list of dictionaries
+    job_list = []
+    for job in jobs:
+        job_dict = {
+            'id': job[0],
+            'title': job[1],
+            'company_name': job[2],
+            'location': job[3],
+            'description': job[4],
+            'seniority_level': job[5],
+            'employment_type': job[6],
+            'job_function': job[7],
+            'industry': job[8],
+            'salary': job[9],
+            'yoe': job[10],
+            'education': job[11],
+            'created_at': job[12],
+            'updated_at': job[13]
+        }
+        job_list.append(job_dict)
+    
+    return job_list
 def get_job_by_id(job_id):
     """Retrieve a job by its ID"""
     conn = sqlite3.connect('jobs.db')

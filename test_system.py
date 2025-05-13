@@ -10,48 +10,55 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def main():
-    print("\nJob Search System")
+    print("\nJob Search Assistant")
+    print("=" * 50)
+    print("I can help you search for jobs and send results via email.")
+    print("Type 'quit' to exit")
     print("=" * 50)
     
+    # Keep track of conversation context
+    context = {
+        "last_search": None,
+        "jobs_found": False
+    }
+    
     while True:
-        # Get user input
-        job_title = input("\nEnter job title to search (or 'quit' to exit): ").strip()
+        user_input = input("\nHow can I help you? ").strip()
         
-        if job_title.lower() in ['quit', 'exit']:
-            print("\nExiting program. Goodbye!")
+        if user_input.lower() in ['quit', 'exit']:
+            print("\nGoodbye!")
             break
             
-        location = input("Enter location (press Enter to skip): ").strip()
-        num_jobs = input("Enter number of jobs to fetch (default: 5): ").strip()
+        # Process the user's request
+        result = orchestrator(user_input)
         
-        # Set default values
-        if not num_jobs:
-            num_jobs = 5
-        else:
-            try:
-                num_jobs = int(num_jobs)
-            except ValueError:
-                print("Invalid number. Using default of 5 jobs.")
-                num_jobs = 5
-        
-        # Construct the search query
-        search_query = f"Find me {num_jobs} {job_title} jobs"
-        if location:
-            search_query += f" in {location}"
-            
-        print(f"\nSearching for: {search_query}")
-        
-        # Use the orchestrator to search and store jobs
-        result = orchestrator(search_query)
-        
+        # Update context based on the result
         if result and isinstance(result, dict) and "jobs" in result:
-            print(f"\nSuccessfully scraped {len(result['jobs'])} jobs!")
-            print("Jobs have been stored in the database and embeddings have been created.")
+            context["last_search"] = result
+            context["jobs_found"] = True
+            print(f"\n{result['message']}")
+            
+            # Follow-up question
+            print("\nWould you like me to:")
+            print("1. Search for more jobs")
+            print("2. Send these results via email")
+            print("3. View the jobs in the database")
+            
+        elif "email" in user_input.lower():
+            if not context["jobs_found"]:
+                print("\nI haven't found any jobs yet. Would you like to search for some?")
+            else:
+                email = input("\nPlease enter your email address: ").strip()
+                try:
+                    send_result = orchestrator(f"Send the job results to {email}")
+                    print("\nEmail sent successfully!")
+                except Exception as e:
+                    print(f"\nError sending email: {str(e)}")
+        
         else:
-            print("\nNo jobs found or an error occurred during the search.")
+            print("\n" + str(result))
 
 if __name__ == "__main__":
-    # Check for OpenAI API key
     if not os.getenv("OPENAI_API_KEY"):
         print("Error: OPENAI_API_KEY environment variable is not set.")
         print("Please set your OpenAI API key in the .env file or as an environment variable.")

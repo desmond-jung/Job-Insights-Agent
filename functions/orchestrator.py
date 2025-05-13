@@ -5,6 +5,7 @@ from functions.database import init_db, store_jobs, get_job_by_id
 from functions.embedder import embed_jobs
 from functions.vector_store import build_faiss_index
 from dotenv import load_dotenv
+from functions.email_sender import send_email
 import os
 
 load_dotenv()
@@ -74,6 +75,20 @@ functions = [
             },
             "required": ["embeddings"]
         }
+    },
+    {
+        "name": "send_email",
+        "description": "Send job search results via email",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "recipient_email": {
+                    "type": "string",
+                    "description": "Email address to send results to"
+                }
+            },
+            "required": ["recipient_email"]
+        }
     }
 ]
 
@@ -91,6 +106,8 @@ def call_function_by_name(name, arguments):
             return build_faiss_index(**arguments)
         elif name == "get_job_by_id":
             return get_job_by_id(**arguments)
+        elif name == "send_email":
+            return send_email(**arguments)
         else:
             raise ValueError(f"Unknown function: {name}")
     except Exception as e:
@@ -122,7 +139,6 @@ def orchestrator(user_prompt):
                 # If the function called was scrape_jobs, automatically process the results
                 if func_name == "scrape_jobs" and result:
                     # Store jobs in database
-                    store_jobs(result)
                     
                     # Generate embeddings for job descriptions
                     descriptions = [job['description'] for job in result] # for each result in outputted dict, grab desc
