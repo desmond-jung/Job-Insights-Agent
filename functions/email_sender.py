@@ -23,7 +23,7 @@ def get_gmail_service():
     # if no valid credentials available, let user log in
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Requests())
+            creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
                 'credentials.json', SCOPES)
@@ -35,4 +35,8 @@ def get_gmail_service():
 
 def create_message(sender, to, subject ,message_text):
     """Create a message for an email"""
-    
+    message = MIMEText(message_text)
+    message['to'] = to
+    message['from'] = sender
+    message['subject'] = subject
+    return {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
