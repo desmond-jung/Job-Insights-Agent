@@ -58,9 +58,18 @@ def main():
         else:
             print("\n" + str(result))
 
+def test_skill_extraction():
+    print("\nTesting skill extraction for 'Data Scientist'...")
+    result = orchestrator("What are the main skills for a Data Scientist in New York?")
+    print("Extracted skills:", result)
+
 if __name__ == "__main__":
     if not os.getenv("OPENAI_API_KEY"):
         print("Error: OPENAI_API_KEY environment variable is not set.")
         print("Please set your OpenAI API key in the .env file or as an environment variable.")
     else:
-        main()
+        import sys
+        if len(sys.argv) > 1 and sys.argv[1] == "test_skills":
+            test_skill_extraction()
+        else:
+            main()

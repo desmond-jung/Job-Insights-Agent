@@ -6,4 +6,9 @@ flask
 regex
 pandas
 sentence-transformers
+faiss-cpu
+numpy
+spacy==3.7.2
+dotenv
+keybert
 #spacy

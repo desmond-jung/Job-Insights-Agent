@@ -4,6 +4,7 @@ from functions.scraper import scrape_jobs
 from functions.database import init_db, store_jobs, get_job_by_id
 from functions.embedder import embed_jobs
 from functions.vector_store import build_faiss_index
+from functions.skill_extractor import extract_skills
 from dotenv import load_dotenv
 from functions.email_sender import send_email
 import os
@@ -89,6 +90,19 @@ functions = [
             },
             "required": ["recipient_email"]
         }
+    },
+    {
+        "name": "extract_skills",
+        "description": "Extract key skills for specified job title",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Job title to extract skills for"},
+                "location": {"type": "string", "description": "Location to search in"},
+                "num_jobs": {"type": "integer", "description": "Number of jobs to fetch"}
+            },
+            "required": ["job_title"]
+        }
     }
 ]
 
@@ -106,6 +120,10 @@ def call_function_by_name(name, arguments):
             return build_faiss_index(**arguments)
         elif name == "get_job_by_id":
             return get_job_by_id(**arguments)
+        elif name == "extract_skills":
+            jobs = scrape_jobs(**arguments)
+            descriptions = [job['description'] for job in jobs if job.get('description')]
+            return extract_skills(" ".join(descriptions))
         elif name == "send_email":
             return send_email(**arguments)
         else:
@@ -160,16 +178,4 @@ def orchestrator(user_prompt):
         return None
 
 if __name__ == "__main__":
-    # Test the orchestrator
-    test_queries = [
-        "Find me 5 machine learning jobs in San Francisco",
-        "Scrape 10 data scientist positions in New York",
-        "Get me some software engineering jobs in Seattle"
-    ]
-    
-    for query in test_queries:
-        print(f"\nTesting query: {query}")
-        print("-" * 50)
-        result = orchestrator(query)
-        print(f"Response: {result}")
-        print("-" * 50) 
+    print("HI")

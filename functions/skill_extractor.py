@@ -1,36 +1,26 @@
-import openai
-import requests
-import beautifulsoup4
 import spacy
 import sklearn
 import flask
+import pandas as pd
+from collections import Counter
+from typing import List, Dict, Tuple
+import re
+from functions.database import list_all_jobs
+from keybert import KeyBERT
 
-def scrape_jobs(query):
-    # ...scrape or load jobs...
-    return {"jobs": [...]}
+# load spacy modek
+def extract_skills(job_descriptions):
+    try:
+        nlp = spacy.load("en_core_web_sm")
+    except OSError:
+        print("Downloading spaCy model...")
+        import subprocess
+        subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+        nlp = spacy.load("en_core_web_sm")
 
-def summarize_jobs(jobs):
-    # ...call OpenAI to summarize...
-    return "Summary..."
+    # Common technical skills
 
-def extract_skills(jobs):
-    # ...NLP to extract skills...
-    return ["Python", "SQL"]
-
-functions = [
-    {
-        "name": "scrape_jobs",
-        "description": "Scrape job postings for a given query.",
-        "parameters": {"type": "object", "properties": {"query": {"type": "string"}}}
-    },
-    # ...other function specs...
-]
-
-response = openai.ChatCompletion.create(
-    model="gpt-4-1106-preview",
-    messages=[{"role": "user", "content": "I'm interested in Machine Learning Engineer roles."}],
-    functions=functions,
-    function_call="auto"
-)
-
-# The LLM will decide which function to call and with what arguments. 
+    kw_model = KeyBERT()
+    keywords = kw_model.extract_keywords(job_descriptions, keyphrase_ngram_range=(1, 3), stop_words='english')
+    skills = [kw for kw, score in keywords]
+    return skills
