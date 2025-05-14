@@ -3,7 +3,6 @@ import json
 import re
 from openai import OpenAI
 from dotenv import load_dotenv
-import requests
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
@@ -65,19 +64,3 @@ def enrich_company_data(company_list: list, fields:list = ["domain", "careers_pa
         else:
             raise ValueError("Could not parse enriched company list from LLM response.")
     return enriched
-
-def validate_careers_url(url, keywords=None, timeout=5):
-    if keywords is None:
-        keywords = ["career", "job", "work with us", "join our team", "employment", "vacancy", "opportunities", "positions", "join us", "openings"]
-    try:
-        resp = requests.get(url, timeout=timeout)
-        if resp.status_code != 200:
-            return False
-        url_lower = url.lower()
-        # Accept if the URL itself contains a keyword
-        if any(kw in url_lower for kw in keywords):
-            return True
-        text = resp.text.lower()
-        return any(kw in text for kw in keywords)
-    except Exception:
-        return False
