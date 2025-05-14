@@ -129,3 +129,11 @@ def get_job_by_id(job_id):
     
     conn.close()
     return None
+
+def clear_jobs():
+    """Delete all jobs from the database."""
+    conn = sqlite3.connect('jobs.db')
+    c = conn.cursor()
+    c.execute('DELETE FROM jobs')
+    conn.commit()
+    conn.close()

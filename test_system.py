@@ -4,6 +4,7 @@ from functions.orchestrator import orchestrator
 from functions.scraper import scrape_jobs
 from functions.embedder import embed_jobs
 from functions.vector_store import build_faiss_index
+from functions.database import list_all_jobs
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -64,12 +65,14 @@ def test_skill_extraction():
     print("Extracted skills:", result)
 
 if __name__ == "__main__":
-    if not os.getenv("OPENAI_API_KEY"):
-        print("Error: OPENAI_API_KEY environment variable is not set.")
-        print("Please set your OpenAI API key in the .env file or as an environment variable.")
-    else:
-        import sys
-        if len(sys.argv) > 1 and sys.argv[1] == "test_skills":
-            test_skill_extraction()
-        else:
-            main()
+    jobs = list_all_jobs()
+    print(f"Total jobs in database: {len(jobs)}\n")
+    for i, job in enumerate(jobs, 1):
+        print(f"Job #{i}")
+        for k, v in job.items():
+            print(f"  {k}: {v}")
+        print("-" * 40)
+        if i >= 10:
+            print("... (showing first 10 jobs only)")
+            break 
+    

@@ -7,7 +7,10 @@ from functions.vector_store import build_faiss_index
 from functions.skill_extractor import extract_skills
 from dotenv import load_dotenv
 from functions.email_sender import send_email
+from functions.database import clear_jobs
 import os
+
+clear_jobs()
 
 load_dotenv()
 
