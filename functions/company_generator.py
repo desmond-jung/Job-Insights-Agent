@@ -10,7 +10,7 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 def generate_company_list():
 
     prompt = (
-        "Generate a list of 10 diverse companies based in the United States in JSON array form, "
+        "Generate a list of 2 diverse companies based in the United States in JSON array form, "
         "with each object containing: {'name': ...}. "
         "Include companies from a wide range of industries (technology, healthcare, finance, manufacturing, retail, energy, etc.), "
         "and of all sizes (large corporations, mid-sized firms, and small businesses/startups). "
@@ -40,10 +40,11 @@ def generate_company_list():
         
     return companies
 
-def enrich_company_data(company_list: list, fields:list = ["domain", "careers_page_url"]):
+def enrich_company_data(company_list: list, fields:list = ["domain", "careers_page_url", "industry"]):
     prompt = (
         "Given the following list of companies, add the following fields for each company:"
         f"{', '.join(fields)}."
+        "For 'careers_page_url', find the landing page that has all the individual job listings"
         "Return the enriched list as a JSON array, with no extra text or explanation. \n"
         f"Companies: {json.dumps(company_list)}"
     )
@@ -64,3 +65,10 @@ def enrich_company_data(company_list: list, fields:list = ["domain", "careers_pa
         else:
             raise ValueError("Could not parse enriched company list from LLM response.")
     return enriched
+
+if __name__ == "__main__":
+    companies = generate_company_list()
+    print(companies)
+    print(enrich_company_data(companies))
+
+    #https://www.tesla.com/careers/search/?site=US 
