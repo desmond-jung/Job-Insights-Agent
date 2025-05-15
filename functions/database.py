@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+import json
 
 def init_db():
     """Initialize the database and create tables if they don't exist"""
@@ -8,12 +9,18 @@ def init_db():
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS jobs(
-            job_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_id TEXT PRIMARY KEY,
             title TEXT,
             company_name TEXT,
             location TEXT,
             industry TEXT,
             description TEXT,
+            seniority_level TEXT,
+            employment_type TEXT,
+            job_function TEXT,
+            years_experience INTEGER,
+            salary_range TEXT,
+            required_skills TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -30,18 +37,34 @@ def store_jobs(job_data):
     conn = sqlite3.connect('jobs.db')
     c = conn.cursor()
 
-    c.execute('''
-        INSERT INTO jobs (title, company_name, location, industry, description) 
-        VALUES (?, ?, ?, ?, ?)
-    ''', (
-        job_data.get('title'),
-        job_data.get('company_name'),
-        job_data.get('location'),
-        job_data.get('industry'),
-        job_data.get('description')
-    ))
-    conn.commit()
-    conn.close()
+    try:
+        # Convert required_skills list to JSON string if it exists
+        required_skills = json.dumps(job_data.get('required_skills')) if job_data.get('required_skills') else None
+        
+        c.execute('''
+            INSERT INTO jobs (job_id, title, company_name, location, industry, description, seniority_level, employment_type, job_function, years_experience, salary_range, required_skills) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            job_data.get('job_id'),
+            job_data.get('title'),
+            job_data.get('company_name'),
+            job_data.get('location'),
+            job_data.get('industry'),
+            job_data.get('description'),
+            job_data.get('seniority_level'),
+            job_data.get('employment_type'),
+            job_data.get('job_function'),
+            job_data.get('years_experience'),
+            job_data.get('salary_range'),
+            required_skills
+        ))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        print(f"Job {job_data.get('job_id')} already exists in database")
+    except Exception as e:
+        print(f"Error storing job: {str(e)}")
+    finally:
+        conn.close()
 
 def clear_jobs():
     """Delete all jobs from the database."""
