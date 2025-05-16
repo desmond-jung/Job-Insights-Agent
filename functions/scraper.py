@@ -6,10 +6,10 @@ import json
 import openai
 import tiktoken
 
-def count_tokens(text: str, model: str = "gpt-4") -> int:
-    """Count the number of tokens in a text string."""
-    encoding = tiktoken.encoding_for_model(model)
-    return len(encoding.encode(text))
+# def count_tokens(text: str, model: str = "gpt-4") -> int:
+#     """Count the number of tokens in a text string."""
+#     encoding = tiktoken.encoding_for_model(model)
+#     return len(encoding.encode(text))
 
 def clean_description(description):
     if description:
@@ -30,110 +30,110 @@ def clean_description(description):
         return text
     return None
 
-def extract_relevant_sentences(description: str) -> str:
-    """
-    Extract sentences that pertain to salary or years of experience
-    """
-    if not description:
-        return ""
+# def extract_relevant_sentences(description: str) -> str:
+#     """
+#     Extract sentences that pertain to salary or years of experience
+#     """
+#     if not description:
+#         return ""
         
-    sentences = description.split('.')
-    relevant_sentences = []
+#     sentences = description.split('.')
+#     relevant_sentences = []
 
-    keywords = {
-        'experience': [
-            'year', 'years', 'experience', 'exp', 'minimum', 'least', 'required',
-            'qualification', 'qualify',
-            'background', 'track record', 'proven', 'demonstrated'
-        ],
-        'salary': [
-            'salary', 'compensation', 'pay', 'wage', 'hourly', 'annual', '$', 
-            'thousand', 'range', 'package', 'benefits', 'bonus', 'equity',
-            'competitive'
-        ]
-    }
+#     keywords = {
+#         'experience': [
+#             'year', 'years', 'experience', 'exp', 'minimum', 'least', 'required',
+#             'qualification', 'qualify',
+#             'background', 'track record', 'proven', 'demonstrated'
+#         ],
+#         'salary': [
+#             'salary', 'compensation', 'pay', 'wage', 'hourly', 'annual', '$', 
+#             'thousand', 'range', 'package', 'benefits', 'bonus', 'equity',
+#             'competitive'
+#         ]
+#     }
 
-    for sentence in sentences:
-        sentence = sentence.strip()
-        if not sentence:  # Skip empty sentences
-            continue
+#     for sentence in sentences:
+#         sentence = sentence.strip()
+#         if not sentence:  # Skip empty sentences
+#             continue
             
-        # Convert to lowercase for matching
-        sentence_lower = sentence.lower()
+#         # Convert to lowercase for matching
+#         sentence_lower = sentence.lower()
         
-        # For salary, only keep sentences with numbers and currency symbols
-        if any(keyword in sentence_lower for keyword in keywords['salary']):
-            if any(char.isdigit() for char in sentence):
-                relevant_sentences.append(sentence)
-        # For experience, keep sentences with keywords and numbers
-        elif any(keyword in sentence_lower for keyword in keywords['experience']):
-            if any(char.isdigit() for char in sentence):
-                relevant_sentences.append(sentence)
+#         # For salary, only keep sentences with numbers and currency symbols
+#         if any(keyword in sentence_lower for keyword in keywords['salary']):
+#             if any(char.isdigit() for char in sentence):
+#                 relevant_sentences.append(sentence)
+#         # For experience, keep sentences with keywords and numbers
+#         elif any(keyword in sentence_lower for keyword in keywords['experience']):
+#             if any(char.isdigit() for char in sentence):
+#                 relevant_sentences.append(sentence)
     
-    return '. '.join(relevant_sentences)
+#     return '. '.join(relevant_sentences)
 
-def enrich_job_metadata(job_dict: dict, salary_found: bool = True) -> dict:
-    """
-    Enrich job data dictionary with fields years of experinece, salary
-    """
-    if not job_dict.get('description'):
-        return job_dict
+# def enrich_job_metadata(job_dict: dict, salary_found: bool = True) -> dict:
+#     """
+#     Enrich job data dictionary with fields years of experinece, salary
+#     """
+#     if not job_dict.get('description'):
+#         return job_dict
     
-    try:
-        # Extract relevant sentences first
-        relevant_text = extract_relevant_sentences(job_dict['description'])
+#     try:
+#         # Extract relevant sentences first
+#         relevant_text = extract_relevant_sentences(job_dict['description'])
         
-        # Count tokens in the prompt
-        prompt_tokens = count_tokens(relevant_text)
-        print(f"Number of tokens in relevant text: {prompt_tokens}")
-        print(f"Job ID: {job_dict.get('job_id')}")
-        print(f"Original description length: {len(job_dict.get('description', ''))} characters")
-        print(f"Relevant text length: {len(relevant_text)} characters")
+#         # Count tokens in the prompt
+#         prompt_tokens = count_tokens(relevant_text)
+#         print(f"Number of tokens in relevant text: {prompt_tokens}")
+#         print(f"Job ID: {job_dict.get('job_id')}")
+#         print(f"Original description length: {len(job_dict.get('description', ''))} characters")
+#         print(f"Relevant text length: {len(relevant_text)} characters")
         
-        # LLM code (commented out for testing)
+#         # LLM code (commented out for testing)
         
-        client = openai.OpenAI()
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a helpful job assistant that extracts job metadata.\n"
-                        "Extract years of experience and salary from the given text.\n"
-                        "For experience: Look for numbers with 'year', 'experience', etc. Average if multiple numbers given.\n"
-                        "For salary: Convert all amounts to annual salary (e.g., hourly*2080, monthly*12).\n"
-                        "Return a JSON object with only these fields: yoe (number or null), salary_range (string or null)"
-                    )
-                },
-                {"role": "user", "content": relevant_text}
-            ],
-            temperature=0.1
-        )
-        result = response.choices[0].message.content.strip()
-        metadata = json.loads(result)
+#         client = openai.OpenAI()
+#         response = client.chat.completions.create(
+#             model="gpt-4",
+#             messages=[
+#                 {
+#                     "role": "system",
+#                     "content": (
+#                         "You are a helpful job assistant that extracts job metadata.\n"
+#                         "Extract years of experience and salary from the given text.\n"
+#                         "For experience: Look for numbers with 'year', 'experience', etc. Average if multiple numbers given.\n"
+#                         "For salary: Convert all amounts to annual salary (e.g., hourly*2080, monthly*12).\n"
+#                         "Return a JSON object with only these fields: yoe (number or null), salary_range (string or null)"
+#                     )
+#                 },
+#                 {"role": "user", "content": relevant_text}
+#             ],
+#             temperature=0.1
+#         )
+#         result = response.choices[0].message.content.strip()
+#         metadata = json.loads(result)
 
-        if salary_found:
-            job_dict.update({
-                'years_experience': metadata.get('yoe')
-            })
-        else:
-            job_dict.update({
-                'years_experience': metadata.get('yoe'),
-                'salary_range': metadata.get('salary_range')
-            })
+#         if salary_found:
+#             job_dict.update({
+#                 'years_experience': metadata.get('yoe')
+#             })
+#         else:
+#             job_dict.update({
+#                 'years_experience': metadata.get('yoe'),
+#                 'salary_range': metadata.get('salary_range')
+#             })
         
         
-        # Don't actually call the API, just return the job dict
-        return job_dict
+#         # Don't actually call the API, just return the job dict
+#         return job_dict
     
-    except Exception as e:
-        print(f"Error enriching job metadata: {str(e)}")
-        job_dict.update({
-            'years_experience': None,
-            'salary_range': None
-        })
-    return job_dict
+#     except Exception as e:
+#         print(f"Error enriching job metadata: {str(e)}")
+#         job_dict.update({
+#             'years_experience': None,
+#             'salary_range': None
+#         })
+#     return job_dict
 
 def scrape_jobs(num_jobs: int = 50) -> list:
     all_jobs = []
@@ -242,17 +242,44 @@ def scrape_jobs(num_jobs: int = 50) -> list:
             job_post["job_function"] = None
             
         # Salary
-        salary_found = False
         try:
             salary_div = job_soup.find("div", {"class": "salary compensation__salary"})
             if salary_div:  
-                job_post["salary"] = salary_div.text.strip()
-                salary_found = True
+                job_post["salary_range"] = salary_div.text.strip()
         except:
-            job_post["salary"] = None
-            salary_found = False
+            job_post["salary_range"] = None
+        # Years of Experience - Keep as given in description
+        try:
+            bullet_points = raw_description.find_all(["li", "p"])
+            pattern = r'(\d+)\+?\s*years?\s*(?:of experience)?|(\d+)-(\d+)\s*years?\s*(?:of experience)?|(\d+)\s*years?\s*(?:of experience)?'
 
-        job_post = enrich_job_metadata(job_post, salary_found)
+            matches = re.findall(pattern, cleaned_desc)
+            yoe_bullets = []
+
+            for bullet in bullet_points:
+                text = bullet.get_text(strip=True)  
+                if re.search(pattern, text):  
+                    yoe_bullets.append(text)
+
+            job_post["yoe"] = yoe_bullets
+        except:
+            job_post["yoe"] = None
+
+        # Degree Required - format as a list if mulitple degrees
+
+        try:
+            pattern = r"(?i)\b(bachelor[’']?s|master[’']?s|ph\.?d|doctorate|b\.?s\.?|m\.?s\.)\b"
+            edu = re.findall(pattern, cleaned_desc)
+            
+            edu = [match.lower().replace("’", "'") for match in edu]
+            degree_map = {"bs": "bachelor's", "ms": "master's", "b.s": "bachelor's", "m.s": "master's"}
+            formatted_matches = [degree_map.get(match, match) for match in edu]
+            degrees = list(set(formatted_matches))
+            
+            job_post["education"] = degrees
+        except:
+            job_post["education"] = None
+
         job_list.append(job_post)
 
     return job_list
@@ -263,7 +290,17 @@ def scrape_jobs(num_jobs: int = 50) -> list:
 if __name__ == "__main__":
     jobs = scrape_jobs(num_jobs=1)
     print(f"Scraped {len(jobs)} jobs")
-    print(json.dumps(jobs[0], indent=2))
+    
+    # Print schema of the job dictionary
+    if jobs:
+        schema = {key: type(value).__name__ for key, value in jobs[0].items()}
+        print("\nJob Dictionary Schema:")
+        print(json.dumps(schema, indent=2))
+        
+        # Print sample values for each field
+        print("\nSample Values:")
+        print(json.dumps({key: str(value)[:100] + "..." if isinstance(value, str) and len(str(value)) > 100 else value 
+                         for key, value in jobs[0].items()}, indent=2))
 
     
    

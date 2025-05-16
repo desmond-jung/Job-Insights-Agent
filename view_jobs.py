@@ -16,7 +16,9 @@ def format_job(job):
         'job_function': job[8],
         'years_experience': job[9],
         'salary_range': job[10],
-        'created_at': job[11]
+        'yoe': json.loads(job[11]) if job[11] else None,
+        'education': json.loads(job[12]) if job[12] else None,
+        'created_at': job[13]
     }
 
 def main():
@@ -42,6 +44,8 @@ def main():
         print(f"Job Function: {job['job_function']}")
         print(f"Years Experience: {job['years_experience']}")
         print(f"Salary Range: {job['salary_range']}")
+        print(f"YOE Details: {job['yoe']}")
+        print(f"Education Required: {job['education']}")
         print(f"Created At: {job['created_at']}")
         print(f"\nDescription: {job['description'][:200]}...")  # First 200 chars of description
     

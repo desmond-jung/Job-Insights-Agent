@@ -24,6 +24,8 @@ def init_db():
             job_function TEXT,
             years_experience INTEGER,
             salary_range TEXT,
+            yoe TEXT,
+            education TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -48,11 +50,17 @@ def store_jobs(job_data):
         # Ensure years_experience is an integer or None
         years_experience = int(job_data.get('years_experience')) if job_data.get('years_experience') is not None else None
         
+        # Convert yoe list to JSON string if it exists
+        yoe = json.dumps(job_data.get('yoe')) if job_data.get('yoe') is not None else None
+        
+        # Convert education list to JSON string if it exists
+        education = json.dumps(job_data.get('education')) if job_data.get('education') is not None else None
+        
         c.execute('''
             INSERT INTO jobs (job_id, title, company_name, location, industry, description, 
                             seniority_level, employment_type, job_function, years_experience, 
-                            salary_range) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            salary_range, yoe, education) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             job_data.get('job_id'),
             job_data.get('title'),
@@ -64,7 +72,9 @@ def store_jobs(job_data):
             job_data.get('employment_type'),
             job_data.get('job_function'),
             years_experience,
-            job_data.get('salary_range')
+            job_data.get('salary_range'),
+            yoe,
+            education
         ))
         conn.commit()
         print(f"Successfully stored job {job_data.get('job_id')}")
