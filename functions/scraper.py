@@ -4,17 +4,73 @@ from bs4 import BeautifulSoup
 import re
 import json
 import openai
+import tiktoken
+
+def count_tokens(text: str, model: str = "gpt-4") -> int:
+    """Count the number of tokens in a text string."""
+    encoding = tiktoken.encoding_for_model(model)
+    return len(encoding.encode(text))
 
 def clean_description(description):
     if description:
         description = description.text
+        # First add spaces between camelCase
         text = re.sub(r'([a-z])([A-Z])', r'\1 \2', description)
+        # Convert to lowercase
         text = text.lower()
-        text = re.sub(r'[^\w\s]', '', text)
+        # Remove punctuation except periods
+        text = re.sub(r'[^\w\s.]', '', text)
+        # Clean up multiple spaces
         text = re.sub(r'\s+', ' ', text)
+        # Clean up multiple periods
+        text = re.sub(r'\.+', '.', text)
+        # Clean up spaces around periods
+        text = re.sub(r'\s*\.\s*', '. ', text)
         text = text.strip()
         return text
     return None
+
+def extract_relevant_sentences(description: str) -> str:
+    """
+    Extract sentences that pertain to salary or years of experience
+    """
+    if not description:
+        return ""
+        
+    sentences = description.split('.')
+    relevant_sentences = []
+
+    keywords = {
+        'experience': [
+            'year', 'years', 'experience', 'exp', 'minimum', 'least', 'required',
+            'qualification', 'qualify',
+            'background', 'track record', 'proven', 'demonstrated'
+        ],
+        'salary': [
+            'salary', 'compensation', 'pay', 'wage', 'hourly', 'annual', '$', 
+            'thousand', 'range', 'package', 'benefits', 'bonus', 'equity',
+            'competitive'
+        ]
+    }
+
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:  # Skip empty sentences
+            continue
+            
+        # Convert to lowercase for matching
+        sentence_lower = sentence.lower()
+        
+        # For salary, only keep sentences with numbers and currency symbols
+        if any(keyword in sentence_lower for keyword in keywords['salary']):
+            if any(char.isdigit() for char in sentence):
+                relevant_sentences.append(sentence)
+        # For experience, keep sentences with keywords and numbers
+        elif any(keyword in sentence_lower for keyword in keywords['experience']):
+            if any(char.isdigit() for char in sentence):
+                relevant_sentences.append(sentence)
+    
+    return '. '.join(relevant_sentences)
 
 def enrich_job_metadata(job_dict: dict, salary_found: bool = True) -> dict:
     """
@@ -24,52 +80,33 @@ def enrich_job_metadata(job_dict: dict, salary_found: bool = True) -> dict:
         return job_dict
     
     try:
-        prompt = f"""
-        Given the raw job description of the job listing page, extract the necessary years of experience required for this job.
-        If multiple ranges or number of years of experience are given, average the numbers. 
-        Look for phrases like "X years of experience", "minimum X years", "X+ years", etc.
-        If a specific number is mentioned (like "1 years of work experience"), use that number.
-
-        Some example of years of experience are:
-        3+ years of experience in data analysis -> 3  
-        At least 5 years of relevant experience -> 5  
-        Minimum 2 years experience working with Python -> 2  
-        4 to 6 years of experience in project management -> 5   
-        Must have 2 years' experience in customer support, 4 years in cloud -> 3  
-        Experience of 1 year or more with data pipelines -> 1  
-        Over 8 years of experience in software development -> 8  
-        5+ yrs in a leadership role -> 5  
-        1 years of work experience -> 1
+        # Extract relevant sentences first
+        relevant_text = extract_relevant_sentences(job_dict['description'])
         
-        Additionally, extract the salary range provided in the text. If the salary is given in hourly rates, convert it to salary.
-        Here are some examples:
-
-        Salary starts at $90,000 per year -> 90000  
-        We offer a competitive salary of $120k–$140k depending on experience -> 130000  
-        Compensation: $30/hour, full-time position -> 62400  
-        Base salary of $100,000 with performance bonuses -> 100000  
-        Earn between $70,000 and $90,000 annually -> 80000  
-        The role pays $5,000 per month -> 60000  
-        Salary range: $95K to $115K -> 105000  
-        Annual compensation of $110k+ based on skills -> 110000  
-        Pay starts at $45/hour for experienced candidates -> 93600  
-        $80,000/year minimum, with equity options -> 80000  
-        You'll earn about $65,000 to $85,000 depending on fit -> 75000  
-        Our starting salary is $75,000 -> 75000  
-        Hourly wage between $50 and $60 -> 114400 
+        # Count tokens in the prompt
+        prompt_tokens = count_tokens(relevant_text)
+        print(f"Number of tokens in relevant text: {prompt_tokens}")
+        print(f"Job ID: {job_dict.get('job_id')}")
+        print(f"Original description length: {len(job_dict.get('description', ''))} characters")
+        print(f"Relevant text length: {len(relevant_text)} characters")
         
-        Return a JSON object with only these fields:
-        yoe (number or null), salary_range(string or null)
-
-        Job Description:
-        {job_dict['description']}
-        """
+        # LLM code (commented out for testing)
+        
         client = openai.OpenAI()
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a helpful job assistant that extracts job metadata from a job posting description. Return a JSON object ONLY"},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a helpful job assistant that extracts job metadata.\n"
+                        "Extract years of experience and salary from the given text.\n"
+                        "For experience: Look for numbers with 'year', 'experience', etc. Average if multiple numbers given.\n"
+                        "For salary: Convert all amounts to annual salary (e.g., hourly*2080, monthly*12).\n"
+                        "Return a JSON object with only these fields: yoe (number or null), salary_range (string or null)"
+                    )
+                },
+                {"role": "user", "content": relevant_text}
             ],
             temperature=0.1
         )
@@ -78,15 +115,20 @@ def enrich_job_metadata(job_dict: dict, salary_found: bool = True) -> dict:
 
         if salary_found:
             job_dict.update({
-            'years_experience': metadata.get('yoe')})
+                'years_experience': metadata.get('yoe')
+            })
         else:
             job_dict.update({
                 'years_experience': metadata.get('yoe'),
                 'salary_range': metadata.get('salary_range')
             })
+        
+        
+        # Don't actually call the API, just return the job dict
+        return job_dict
+    
     except Exception as e:
         print(f"Error enriching job metadata: {str(e)}")
-        # Add empty fields if enrichment fails
         job_dict.update({
             'years_experience': None,
             'salary_range': None
