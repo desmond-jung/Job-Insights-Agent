@@ -19,3 +19,16 @@ selenium
 #spacy
 scrapy
 tiktoken
+qdrant_client
+# venv/bin/activate
+
+# LangChain packages
+langchain
+langchain_openai
+langchain-core
+langchain-community
+langchain-anthropic
+langchain-tavily
+langgraph
+anthropic
+tavily-python

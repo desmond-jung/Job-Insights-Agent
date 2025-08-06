@@ -4,7 +4,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 import base64
 from email.mime.text import MIMEText
-from functions.database import list_all_jobs
+from functions.database import get_all_jobs
 import os
 import pickle
 
@@ -48,7 +48,7 @@ def send_email(recipient_email):
         # get gmail service
         service = get_gmail_service()
 
-        jobs = list_all_jobs()
+        jobs = get_all_jobs()
         email_content = "Job Search Results:\n\n"
         for job in jobs:
             email_content += f"""

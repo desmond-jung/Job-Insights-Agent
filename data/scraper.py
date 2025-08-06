@@ -7,6 +7,8 @@ import spacy
 from keybert import KeyBERT
 import subprocess
 
+
+
 def clean_description(description):
     if description:
         description = description.text
@@ -26,6 +28,11 @@ def clean_description(description):
         return text
     return None
 
+def extract_job_url(job_soup):
+    a_tag = job_soup.find("a", {"class": 'topcard__link'})
+    return a_tag.get('href') if a_tag.get('href') else None
+
+    
 def extract_title(job_soup):
     title = job_soup.find("h2", {"class": "top-card-layout__title font-sans text-lg papabear:text-xl font-bold leading-open text-color-text mb-0 topcard__title"}).text.strip() if job_soup.find("h2", {"class": "top-card-layout__title font-sans text-lg papabear:text-xl font-bold leading-open text-color-text mb-0 topcard__title"}) else None
     return title 
@@ -63,6 +70,27 @@ def extract_location(job_soup):
         result["state"] = state
     
     return result
+
+def extract_remote_status(job_soup, title, location, description):
+    """Extract whether job allows for remote work"""
+    try:
+        remote_keywords = ['remote', 'work from home', 'wfh', 'virtual']
+        if title and any(keyword in title.lower() for keyword in remote_keywords):
+            return 1
+
+        if location and location.lower() == 'remote':
+            return 1
+        if description:
+            remote_phrases = [
+                'remote work', 'work remotely', 'work from home', 'wfh',
+                'virtual position', 'remote position', 'remote role',
+                'work from anywhere', 'remote-first', 'remote friendly'
+            ]
+            if any(phrase in description for phrase in remote_phrases):
+                return 1
+        return 0
+    except:
+        return 0
 
 def extract_industry(job_soup):
     try:
@@ -119,8 +147,8 @@ def extract_salary(job_soup, description):
                 max_salary = int(range_match.group(2).replace(',', ''))
                 return {
                     "salary_raw": salary_text,
-                    "salary_min": min_salary,
-                    "salary_max": max_salary,
+                    "salary_min": int(min_salary),
+                    "salary_max": int(max_salary),
                     "salary_avg": (min_salary + max_salary) / 2
                 }
             
@@ -131,8 +159,8 @@ def extract_salary(job_soup, description):
                 salary = int(single_match.group(1).replace(',', ''))
                 return {
                     "salary_raw": salary_text,
-                    "salary_min": salary,
-                    "salary_max": salary,
+                    "salary_min": int(salary),
+                    "salary_max": int(salary),
                     "salary_avg": salary
                 }
         
@@ -147,8 +175,8 @@ def extract_salary(job_soup, description):
                 max_salary = int(range_match.group(2).replace(',', ''))
                 return {
                     "salary_raw": range_match.group(0),
-                    "salary_min": min_salary,
-                    "salary_max": max_salary,
+                    "salary_min": int(min_salary),
+                    "salary_max": int(max_salary),
                     "salary_avg": (min_salary + max_salary) / 2
                 }
             
@@ -159,8 +187,8 @@ def extract_salary(job_soup, description):
                 salary = int(single_match.group(1).replace(',', ''))
                 return {
                     "salary_raw": single_match.group(0),
-                    "salary_min": salary,
-                    "salary_max": salary,
+                    "salary_min": int(salary),
+                    "salary_max": int(salary),
                     "salary_avg": salary
                 }
         
@@ -284,51 +312,71 @@ def extract_education(job_soup, description):
     except:
         return []
 
-def extract_skills(job_descriptions):
-    try:
-        nlp = spacy.load("en_core_web_sm")
-    except OSError:
-        subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
-        nlp = spacy.load("en_core_web_sm")
-
-
-    kw_model = KeyBERT()
-    keywords = kw_model.extract_keywords(job_descriptions, keyphrase_ngram_range=(1, 3), stop_words='english')
-    skills = [kw for kw, score in keywords]
-    return skills
+# def extract_skills(job_descriptions):
+#     try:
+#         nlp = spacy.load("en_core_web_sm")
+#     except OSError:
+#         subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+#         nlp = spacy.load("en_core_web_sm")
+#     kw_model = KeyBERT()
+#     keywords = kw_model.extract_keywords(job_descriptions, keyphrase_ngram_range=(1, 3), stop_words='english')
+#     skills = [kw for kw, score in keywords]
+#     return skills
 
 def get_job_ids(num_jobs: int = 50) -> list:
     """Get a list of job IDs from LinkedIn job listings."""
     all_jobs = []
     jobs_found = 0
     start_position = 0
+    max_retries = 3
+    retry_delay = 10  # seconds
 
     # Scrape job listing pages
     while jobs_found < num_jobs:
         list_url = (
             f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
-            f"?f_TPR=r2592000&start={start_position}"
+            f"?keywords=&location=&f_TPR=r2592000&f_WT=2&start={start_position}"  # Added f_WT=2 for remote jobs
         )
-        response = requests.get(list_url)
-        if response.status_code == 200:
-            list_data = response.text
-            list_soup = BeautifulSoup(list_data, "html.parser")
-            more_jobs = list_soup.find_all("li")
-            
-            remaining_jobs = num_jobs - jobs_found
-            jobs_to_add = more_jobs[:remaining_jobs]
-            all_jobs.extend(jobs_to_add)
-            jobs_found += len(jobs_to_add)
-            
-            print(f"Found {len(jobs_to_add)} jobs on page {start_position//10 + 1}")
-            
-            if len(more_jobs) < 10:
+        
+        # Try multiple times if we get rate limited
+        for attempt in range(max_retries):
+            response = requests.get(list_url)
+            if response.status_code == 200:
                 break
-                
-            start_position += 10
-        else:
-            print(f"Failed to fetch page {start_position//10 + 1}")
+            elif response.status_code == 429:
+                print(f"Rate limited. Waiting {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                print(f"Failed to fetch page {start_position//10 + 1}. Status code: {response.status_code}")
+                time.sleep(5)
+        
+        if response.status_code != 200:
+            print("Max retries reached. Stopping job collection.")
             break
+            
+        list_data = response.text
+        list_soup = BeautifulSoup(list_data, "html.parser")
+        more_jobs = list_soup.find_all("li")
+        
+        if not more_jobs:
+            print(f"No more jobs found at position {start_position}")
+            break
+            
+        remaining_jobs = num_jobs - jobs_found
+        jobs_to_add = more_jobs[:remaining_jobs]
+        all_jobs.extend(jobs_to_add)
+        jobs_found += len(jobs_to_add)
+        
+        #print(f"Found {len(jobs_to_add)} jobs on page {start_position//10 + 1}")
+        #print(f"Total jobs found so far: {jobs_found}")
+        
+        if len(more_jobs) < 10:
+            print("Last page reached")
+            break
+            
+        start_position += 10
+        time.sleep(2)  # Add small delay between pages
 
     # Extract job IDs
     job_id_list = []
@@ -342,59 +390,91 @@ def get_job_ids(num_jobs: int = 50) -> list:
     
     return list(set(job_id_list))
 
+def extract_job_source(job_url):
+    """Extract the source from the job URL."""
+    try:
+        if not job_url:
+            return None
+            
+        # Remove http(s):// and www. if present
+        url = job_url.lower()
+        url = re.sub(r'^https?://(www\.)?', '', url)
+        
+        # Split by first /
+        parts = url.split('/', 1)
+        if len(parts) > 1:
+            return parts[0]  # Returns domain like 'linkedin.com'
+        return None
+    except:
+        return None
+
 def scrape_jobs(num_jobs: int = 50) -> list:
     """Scrape job details for the given number of jobs."""
     # Get job IDs first
     job_id_list = get_job_ids(num_jobs)
     print(f"Found {len(job_id_list)} unique job IDs")
 
-    # Scrape each job posting
+    # Scrape jobs sequentially
     job_list = []
     for job_id in job_id_list:
-        job_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
-        job_response = requests.get(job_url)
-        if job_response.status_code == 429:
-            time.sleep(5)
-            job_response = requests.get(job_url)
-        job_soup = BeautifulSoup(job_response.text, "html.parser")
-        job_post = {}
+        try:
+            job_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
+            response = requests.get(job_url)
+            
+            if response.status_code != 200:
+                print(f"Failed to fetch job {job_id}. Status code: {response.status_code}")
+                continue
+                
+            job_soup = BeautifulSoup(response.text, "html.parser")
+            job_post = {}
 
-        # Descriptions
-        raw_description = job_soup.find("div", {"class": "description__text description__text--rich"})
-        cleaned_desc = clean_description(raw_description)
+            # Descriptions
+            raw_description = job_soup.find("div", {"class": "description__text description__text--rich"})
+            cleaned_desc = clean_description(raw_description)
 
-        # Extract all job details
-        job_post["job_id"] = job_id
-        job_post["title"] = extract_title(job_soup)
-        job_post["company_name"] = extract_company_name(job_soup)
-        job_post["location"] = extract_location(job_soup)['location']
-        job_post["city"] = extract_location(job_soup)['city']
-        job_post["state"] = extract_location(job_soup)['state']
-        job_post["country"] = extract_location(job_soup)['country']
-        job_post["description"] = cleaned_desc
-        job_post['industry'] = extract_industry(job_soup)
-        job_post['seniority_level'] = extract_seniority_level(job_soup)
-        job_post['employment_type'] = extract_employment_type(job_soup)
-        job_post['job_function'] = extract_job_function(job_soup)
-        
-        # Extract salary with all fields
-        salary_data = extract_salary(job_soup, raw_description)
-        job_post['salary_raw'] = salary_data['salary_raw']
-        job_post['salary_min'] = salary_data['salary_min']
-        job_post['salary_max'] = salary_data['salary_max']
-        job_post['salary_avg'] = salary_data['salary_avg']
-        
-        # Extract YOE with all fields
-        yoe_data = extract_yoe(job_soup, raw_description)
-        job_post['yoe_raw'] = yoe_data['yoe_raw']
-        job_post['yoe_min'] = yoe_data['yoe_min']
-        job_post['yoe_max'] = yoe_data['yoe_max']
-        job_post['yoe_avg'] = yoe_data['yoe_avg']
-        
-        job_post['education'] = extract_education(job_soup, cleaned_desc)
-        job_post['skills'] = extract_skills(cleaned_desc)
+            # Extract all job details
+            job_post["job_id"] = job_id
+            job_post["job_url"] = extract_job_url(job_soup)
+            job_post["source"] = extract_job_source(job_post["job_url"])
+            job_post["title"] = extract_title(job_soup)
+            job_post["company_name"] = extract_company_name(job_soup)
+            job_post["location"] = extract_location(job_soup)['location']
+            job_post["city"] = extract_location(job_soup)['city']
+            job_post["state"] = extract_location(job_soup)['state']
+            job_post["country"] = extract_location(job_soup)['country']
+            job_post["remote"] = extract_remote_status(job_soup, extract_title(job_soup), extract_location(job_soup)['location'], cleaned_desc)
+            job_post["description"] = cleaned_desc
+            job_post['industry'] = extract_industry(job_soup)
+            job_post['seniority_level'] = extract_seniority_level(job_soup)
+            job_post['employment_type'] = extract_employment_type(job_soup)
+            job_post['job_function'] = extract_job_function(job_soup)
+            
+            # Extract salary with all fields
+            salary_data = extract_salary(job_soup, raw_description)
+            job_post['salary_raw'] = salary_data['salary_raw']
+            job_post['salary_min'] = salary_data['salary_min']
+            job_post['salary_max'] = salary_data['salary_max']
+            job_post['salary_avg'] = salary_data['salary_avg']
+            
+            # Extract YOE with all fields
+            yoe_data = extract_yoe(job_soup, raw_description)
+            job_post['yoe_raw'] = yoe_data['yoe_raw']
+            job_post['yoe_min'] = yoe_data['yoe_min']
+            job_post['yoe_max'] = yoe_data['yoe_max']
+            job_post['yoe_avg'] = yoe_data['yoe_avg']
+            
+            job_post['education'] = extract_education(job_soup, cleaned_desc)
+            #job_post['skills'] = extract_skills(cleaned_desc)
 
-        job_list.append(job_post)
+            job_list.append(job_post)
+            #print(f"Successfully scraped job {job_id} - {job_post.get('title')}")
+            
+            # Add a small delay between requests
+            time.sleep(2)
+            
+        except Exception as e:
+            print(f"Error scraping job {job_id}: {str(e)}")
+            continue
     
     return job_list
 
@@ -402,7 +482,7 @@ def scrape_jobs(num_jobs: int = 50) -> list:
 if __name__ == "__main__":
     start_time = time.time()
     
-    jobs = scrape_jobs(num_jobs=5)
+    jobs = scrape_jobs(num_jobs=1)
     print(f"Scraped {len(jobs)} jobs")
     
     for job in jobs:
