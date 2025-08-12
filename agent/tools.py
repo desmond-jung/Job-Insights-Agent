@@ -26,7 +26,9 @@ def search_jobs_tool(
 
     try:
         from data.database import search_jobs as db_search_jobs
+        print(f"🔧 Tool called with: title='{title}', location='{location}', num_results={num_results}")
         jobs = db_search_jobs(title=title, location=location, num_jobs=num_results)
+        print(f"🔧 Database returned {len(jobs)} jobs")
         if not jobs:
             return f"No jobs found matching your criteria"
         
@@ -40,5 +42,10 @@ def search_jobs_tool(
             result += f"   Description: {job.get('description', 'N/A')[:200]}...\n"
             result += "-" * 50 + "\n"
 
+        print(f"🔧 Tool returning result with {len(jobs)} jobs")
+        print(f"🔧 Result preview: {result[:200]}...")
+        return result
+
     except Exception as e:
+        print(f"🔧 Tool error: {str(e)}")
         return f"Error searching jobs: {str(e)}"
