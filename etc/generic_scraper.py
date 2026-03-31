@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import openai
 import re
-from company_generator import enrich_company_data
+from etc.company_generator import enrich_company_data
 from lxml import etree
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options

@@ -1,10 +1,10 @@
 # test_system.py
 import os
-from functions.orchestrator import orchestrator
-from functions.scraper import scrape_jobs
-from functions.embedder import embed_jobs
-from functions.vector_store import build_faiss_index
-from functions.database import get_all_jobs
+from agent.orchestrator import orchestrator
+from data.scrapers.scraper import scrape_jobs
+from embeddings.embedder import embed_jobs
+from embeddings.vector_store import build_faiss_index
+from data.database import get_all_jobs
 from dotenv import load_dotenv
 
 # Load environment variables

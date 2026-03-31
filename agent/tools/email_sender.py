@@ -4,7 +4,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 import base64
 from email.mime.text import MIMEText
-from functions.database import get_all_jobs
+from data.database import get_all_jobs
 import os
 import pickle
 

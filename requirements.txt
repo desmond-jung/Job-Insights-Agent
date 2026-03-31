@@ -32,3 +32,8 @@ langchain-tavily
 langgraph
 anthropic
 tavily-python
+feedparser
+
+# PDF Processing
+PyPDF2
+pdfplumber

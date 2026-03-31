@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Board - Find Your Next Opportunity</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-briefcase"></i> Job Board</h1>
+                <div class="header-stats">
+                    <span id="total-jobs">Loading...</span>
+                    <span class="separator">•</span>
+                    <span id="last-updated">Last updated: <span id="update-time">-</span></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Sidebar - Jobs List -->
+            <div class="jobs-sidebar">
+                <!-- Search and Filters -->
+                <div class="search-section">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="job-search" placeholder="Search jobs by title or company...">
+                    </div>
+                    <div class="filter-bar">
+                        <input type="text" id="location-filter" placeholder="Filter by location...">
+                        <select id="employment-type-filter">
+                            <option value="">All Types</option>
+                            <option value="Full-time">Full-time</option>
+                            <option value="Part-time">Part-time</option>
+                            <option value="Contract">Contract</option>
+                            <option value="Remote">Remote</option>
+                        </select>
+                        <button id="clear-filters" class="btn-secondary">
+                            <i class="fas fa-times"></i> Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resume Upload Section -->
+                <div class="resume-upload-section">
+                    <h3><i class="fas fa-file-upload"></i> Upload Resume for Job Matching</h3>
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-content">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drag & drop your resume here, or <span class="upload-link">click to browse</span></p>
+                            <p class="upload-hint">PDF files only, max 10MB</p>
+                        </div>
+                        <input type="file" id="resume-upload" accept=".pdf" style="display: none;">
+                    </div>
+                    <div class="upload-progress" id="upload-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <span id="progress-text">Uploading...</span>
+                    </div>
+                    <div class="upload-status" id="upload-status"></div>
+                </div>
+
+                <!-- Jobs List -->
+                <div class="jobs-list" id="jobs-list">
+                    <div class="loading" id="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Loading jobs...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side - AI Assistant (Future) -->
+            <div class="ai-sidebar">
+                <div class="ai-placeholder">
+                    <div class="ai-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>AI Assistant</h3>
+                    <p>Coming Soon</p>
+                    <div class="ai-features">
+                        <div class="feature-item">
+                            <i class="fas fa-lightbulb"></i>
+                            <span>Smart Job Matching</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Career Insights</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-comments"></i>
+                            <span>Interview Prep</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Detail Modal -->
+    <div class="modal" id="job-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title"></h2>
+                <button class="close-btn" id="close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Job details will be populated here -->
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="apply-link" target="_blank" class="btn-primary">
+                    <i class="fas fa-external-link-alt"></i> Apply Now
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

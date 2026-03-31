@@ -53,6 +53,48 @@ def init_db():
     conn.commit()
     conn.close()
 
+def store_job(job_id, job_url, source, title, company_name, description, location, city, state, country, 
+              remote, industry, seniority_level, employment_type, job_function, salary_raw, salary_min, 
+              salary_max, salary_avg, yoe_raw, yoe_min, yoe_max, yoe_avg, education, skills):
+    """Store a single job in the database"""
+    import os
+    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'jobs.db')
+    
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+
+    try:
+        # Convert lists to JSON strings if they are lists
+        if isinstance(education, list):
+            education = json.dumps(education)
+        if isinstance(skills, list):
+            skills = json.dumps(skills)
+        
+        c.execute('''
+            INSERT INTO jobs (job_id, job_url, source, title, company_name, location, city, state, country, remote,
+                            industry, description, seniority_level, employment_type, job_function, 
+                            salary_raw, salary_min, salary_max, salary_avg, yoe_raw, yoe_min, yoe_max, yoe_avg, 
+                            education, skills) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            job_id, job_url, source, title, company_name, location, city, state, country, remote,
+            industry, description, seniority_level, employment_type, job_function,
+            salary_raw, salary_min, salary_max, salary_avg, yoe_raw, yoe_min, yoe_max, yoe_avg,
+            education, skills
+        ))
+        
+        conn.commit()
+        return True
+        
+    except sqlite3.IntegrityError:
+        # Job already exists
+        return False
+    except Exception as e:
+        print(f"Error storing job: {e}")
+        return False
+    finally:
+        conn.close()
+
 def store_jobs(job_data):
     """Store a job in the database
     
@@ -227,6 +269,91 @@ def search_jobs(title=None, location=None, num_jobs=5):
     
     conn.close()
     return filtered_jobs
+
+def get_job_statistics(days_back=7, title_filter=None):
+    """Get comprehensive statistics about jobs in the database"""
+    import os
+    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'jobs.db')
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    
+    # Get total job count
+    c.execute('SELECT COUNT(*) FROM jobs')
+    total_jobs = c.fetchone()[0]
+    
+    # Get recent jobs (last X days)
+    c.execute('''
+        SELECT COUNT(*) FROM jobs 
+        WHERE created_at >= datetime('now', '-{} days')
+    '''.format(days_back))
+    recent_jobs = c.fetchone()[0]
+    
+    # Get top companies
+    c.execute('''
+        SELECT company_name, COUNT(*) as job_count 
+        FROM jobs 
+        GROUP BY company_name 
+        ORDER BY job_count DESC 
+        LIMIT 10
+    ''')
+    top_companies = c.fetchall()
+    
+    # Get top locations
+    c.execute('''
+        SELECT location, COUNT(*) as job_count 
+        FROM jobs 
+        WHERE location IS NOT NULL AND location != ''
+        GROUP BY location 
+        ORDER BY job_count DESC 
+        LIMIT 10
+    ''')
+    top_locations = c.fetchall()
+    
+    # Get employment types
+    c.execute('''
+        SELECT employment_type, COUNT(*) as job_count 
+        FROM jobs 
+        WHERE employment_type IS NOT NULL AND employment_type != ''
+        GROUP BY employment_type 
+        ORDER BY job_count DESC
+    ''')
+    employment_types = c.fetchall()
+    
+    # Get remote vs onsite
+    c.execute('''
+        SELECT 
+            CASE 
+                WHEN remote = '1' OR LOWER(location) LIKE '%remote%' THEN 'Remote'
+                ELSE 'On-site'
+            END as work_type,
+            COUNT(*) as job_count
+        FROM jobs 
+        GROUP BY work_type
+    ''')
+    work_types = c.fetchall()
+    
+    # Get jobs by title filter if provided
+    title_stats = {}
+    if title_filter:
+        c.execute('''
+            SELECT COUNT(*) FROM jobs 
+            WHERE LOWER(title) LIKE LOWER(?)
+        ''', (f'%{title_filter}%',))
+        title_stats['count'] = c.fetchone()[0]
+        title_stats['filter'] = title_filter
+    
+    conn.close()
+    
+    return {
+        'total_jobs': total_jobs,
+        'recent_jobs': recent_jobs,
+        'days_back': days_back,
+        'top_companies': [{'company': company, 'count': count} for company, count in top_companies],
+        'top_locations': [{'location': location, 'count': count} for location, count in top_locations],
+        'employment_types': [{'type': emp_type, 'count': count} for emp_type, count in employment_types],
+        'work_types': [{'type': work_type, 'count': count} for work_type, count in work_types],
+        'title_stats': title_stats
+    }
 
 if __name__ == "__main__":
     # Test the search_jobs function

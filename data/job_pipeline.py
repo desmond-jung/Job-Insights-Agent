@@ -1,4 +1,4 @@
-from scraper import scrape_jobs
+from scrapers.scraper import scrape_jobs
 from database import init_db, store_jobs, clear_jobs
 import time
 
@@ -19,7 +19,7 @@ def main(clear_existing=False):
         
         # Scrape recent jobs from LinkedIn
         print("Scraping recent jobs from LinkedIn...")
-        jobs = scrape_jobs(num_jobs=25)  # Increased to 50 jobs
+        jobs = scrape_jobs(num_jobs=1000)  # Increased to 50 jobs
         
         if not jobs:
             print("No jobs were scraped. Check if LinkedIn is blocking the requests.")

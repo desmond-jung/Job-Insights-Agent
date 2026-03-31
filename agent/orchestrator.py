@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agent.tools import search_jobs_tool
+from agent.tools import search_jobs_tool, get_job_statistics_tool, send_job_results_email, search_and_email_jobs
 
 # Load environment variables
 load_dotenv()
@@ -33,7 +33,7 @@ search = TavilySearch(max_results=2)
 #print(search_results)
 
 # Start with no tools - just conversational agent
-tools = [search_jobs_tool, search]
+tools = [search_jobs_tool, get_job_statistics_tool, send_job_results_email, search_and_email_jobs, search]
 agent_executor = create_react_agent(model, tools, checkpointer=memory)
 
 

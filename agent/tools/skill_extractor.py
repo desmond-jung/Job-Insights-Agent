@@ -5,7 +5,7 @@ import pandas as pd
 from collections import Counter
 from typing import List, Dict, Tuple
 import re
-from functions.database import get_all_jobs
+from data.database import get_all_jobs
 from keybert import KeyBERT
 
 # load spacy modek
